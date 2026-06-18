@@ -26,6 +26,8 @@ from rest_framework import routers
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("", include("apps.orders.urls")),
+    path("", include("apps.stores.urls")),
+    path("", include("apps.search.urls")),
     # Redirect bare /api/ to Swagger docs; other /api/* routes are handled below
     path("api/", RedirectView.as_view(url="/api/docs/", permanent=False)),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
