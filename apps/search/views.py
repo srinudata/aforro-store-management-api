@@ -2,6 +2,7 @@ from decimal import Decimal, InvalidOperation
 
 from django.core.paginator import EmptyPage, Paginator
 from django.db.models import Case, Exists, IntegerField, OuterRef, Q, Subquery, Value, When
+from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -9,13 +10,41 @@ from rest_framework.views import APIView
 from apps.products.models import Product
 from apps.stores.models import Inventory
 
-from .serializers import ProductSearchResultSerializer
+from .serializers import (
+    ProductSearchResponseSerializer,
+    ProductSearchResultSerializer,
+    ProductSuggestResponseSerializer,
+)
 
 
 class ProductSearchAPIView(APIView):
     default_page_size = 10
     max_page_size = 100
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("q", str, description="Keyword search term."),
+            OpenApiParameter("keyword", str, description="Alternative keyword parameter."),
+            OpenApiParameter("category", str, description="Category id or category name."),
+            OpenApiParameter("min_price", str, description="Minimum product price."),
+            OpenApiParameter("max_price", str, description="Maximum product price."),
+            OpenApiParameter("store_id", int, description="Filter products by store inventory."),
+            OpenApiParameter("in_stock", bool, description="Filter products by stock availability."),
+            OpenApiParameter(
+                "sort",
+                str,
+                enum=["price", "-price", "newest", "relevance"],
+                description="Sort by price, newest, or relevance.",
+            ),
+            OpenApiParameter("page", int, description="Page number."),
+            OpenApiParameter("page_size", int, description="Results per page, max 100."),
+        ],
+        responses={
+            200: ProductSearchResponseSerializer,
+            400: OpenApiResponse(description="Invalid filter, sort, or pagination value."),
+        },
+        description="Search products with keyword matching, filters, sorting, and pagination.",
+    )
     def get(self, request):
         queryset = Product.objects.select_related("category")
         keyword = request.query_params.get("q") or request.query_params.get("keyword")
@@ -154,3 +183,40 @@ class ProductSearchAPIView(APIView):
         query_params = request.query_params.copy()
         query_params["page"] = page_number
         return request.build_absolute_uri(f"{request.path}?{query_params.urlencode()}")
+
+
+class ProductSuggestAPIView(APIView):
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "q",
+                str,
+                required=True,
+                description="Autocomplete query. Minimum 3 characters.",
+            ),
+        ],
+        responses={
+            200: ProductSuggestResponseSerializer,
+            400: OpenApiResponse(description="Query must contain at least 3 characters."),
+        },
+        description="Return up to 10 product title suggestions.",
+    )
+    def get(self, request):
+        keyword = (request.query_params.get("q") or "").strip()
+        if len(keyword) < 3:
+            raise ValidationError({"q": "Minimum 3 characters required."})
+
+        suggestions = (
+            Product.objects.filter(title__icontains=keyword)
+            .annotate(
+                match_rank=Case(
+                    When(title__istartswith=keyword, then=Value(0)),
+                    default=Value(1),
+                    output_field=IntegerField(),
+                )
+            )
+            .order_by("match_rank", "title", "id")
+            .values_list("title", flat=True)[:10]
+        )
+
+        return Response({"results": list(suggestions)})

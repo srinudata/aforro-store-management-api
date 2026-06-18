@@ -1,3 +1,4 @@
+from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -7,6 +8,13 @@ from .serializers import StoreInventorySerializer
 
 
 class StoreInventoryListAPIView(APIView):
+    @extend_schema(
+        responses={
+            200: StoreInventorySerializer(many=True),
+            404: OpenApiResponse(description="Store does not exist."),
+        },
+        description="List inventory items for a store, sorted by product title.",
+    )
     def get(self, request, store_id):
         if not Store.objects.filter(pk=store_id).exists():
             raise NotFound("Store does not exist.")

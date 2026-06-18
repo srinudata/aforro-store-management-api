@@ -1,5 +1,6 @@
 from django.db import transaction
 from django.db.models import Count, F
+from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import status
 from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.response import Response
@@ -11,12 +12,21 @@ from apps.stores.models import Inventory, Store
 from .models import Order, OrderItem
 from .serializers import (
     OrderCreateSerializer,
+    OrderCreateResponseSerializer,
     OrderDetailSerializer,
     StoreOrderListSerializer,
 )
 
 
 class OrderCreateAPIView(APIView):
+    @extend_schema(
+        request=OrderCreateSerializer,
+        responses={
+            201: OrderCreateResponseSerializer,
+            400: OpenApiResponse(description="Invalid store, product, or request data."),
+        },
+        description="Create an order, validate stock, and confirm or reject it atomically.",
+    )
     def post(self, request):
         serializer = OrderCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -121,6 +131,13 @@ class OrderCreateAPIView(APIView):
 
 
 class StoreOrderListAPIView(APIView):
+    @extend_schema(
+        responses={
+            200: StoreOrderListSerializer(many=True),
+            404: OpenApiResponse(description="Store does not exist."),
+        },
+        description="List all orders for a store, newest first.",
+    )
     def get(self, request, store_id):
         if not Store.objects.filter(pk=store_id).exists():
             raise NotFound("Store does not exist.")

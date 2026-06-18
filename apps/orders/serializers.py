@@ -24,6 +24,11 @@ class OrderDetailSerializer(serializers.Serializer):
     items = OrderItemDetailSerializer(many=True)
 
 
+class OrderCreateResponseSerializer(serializers.Serializer):
+    status = serializers.CharField()
+    order = OrderDetailSerializer()
+
+
 class StoreOrderListSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     status = serializers.CharField()
