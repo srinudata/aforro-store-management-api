@@ -25,6 +25,7 @@ from rest_framework import routers
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+    path("", include("apps.products.urls")),
     path("", include("apps.orders.urls")),
     path("", include("apps.stores.urls")),
     path("", include("apps.search.urls")),
