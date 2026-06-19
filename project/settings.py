@@ -136,6 +136,13 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 REDIS_URL = config("REDIS_URL", default="redis://localhost:6379/1")
 CACHE_TTL_SECONDS = config("CACHE_TTL_SECONDS", default=300, cast=int)
 
+CELERY_BROKER_URL = config("CELERY_BROKER_URL", default=REDIS_URL)
+CELERY_RESULT_BACKEND = config("CELERY_RESULT_BACKEND", default=REDIS_URL)
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TIMEZONE = TIME_ZONE
+
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",

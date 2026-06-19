@@ -16,6 +16,7 @@ from .serializers import (
     OrderDetailSerializer,
     StoreOrderListSerializer,
 )
+from .tasks import send_order_confirmation
 
 
 class OrderCreateAPIView(APIView):
@@ -110,6 +111,10 @@ class OrderCreateAPIView(APIView):
                 Inventory.objects.filter(
                     pk=inventory_rows[product_id].pk,
                 ).update(quantity=F("quantity") - quantity_requested)
+
+            transaction.on_commit(
+                lambda order_id=order.id: send_order_confirmation.delay(order_id)
+            )
 
         return order
 
