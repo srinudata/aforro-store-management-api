@@ -143,3 +143,18 @@ python manage.py migrate
 ```
 
 After creating a superuser, you can sign in to the Django admin at <http://localhost:8000/admin/>.
+
+## Tests
+
+Install the dependencies and run the test suite with:
+
+```bash
+pip install -r requirements.txt
+pytest
+```
+
+With Docker, run:
+
+```bash
+docker compose exec web pytest
+```
