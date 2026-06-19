@@ -15,6 +15,18 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   web:
     build: .
     command: python manage.py runserver 0.0.0.0:8000
@@ -24,6 +36,8 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_HOST: db
       POSTGRES_PORT: 5432
+      REDIS_URL: redis://redis:6379/1
+      CACHE_TTL_SECONDS: 300
     ports:
       - "8000:8000"
     volumes:
@@ -31,6 +45,9 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
 
 volumes:
   postgres_data:
+  redis_data:

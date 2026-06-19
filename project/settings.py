@@ -133,6 +133,21 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+REDIS_URL = config("REDIS_URL", default="redis://localhost:6379/1")
+CACHE_TTL_SECONDS = config("CACHE_TTL_SECONDS", default=300, cast=int)
+
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": REDIS_URL,
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            "IGNORE_EXCEPTIONS": True,
+        },
+        "KEY_PREFIX": "aforro",
+    }
+}
+
 REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }

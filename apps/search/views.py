@@ -1,5 +1,7 @@
 from decimal import Decimal, InvalidOperation
 
+from django.conf import settings
+from django.core.cache import cache
 from django.core.paginator import EmptyPage, Paginator
 from django.db.models import Case, Exists, IntegerField, OuterRef, Q, Subquery, Value, When
 from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
@@ -7,6 +9,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.cache_utils import request_cache_key
 from apps.products.models import Product
 from apps.stores.models import Inventory
 
@@ -46,6 +49,11 @@ class ProductSearchAPIView(APIView):
         description="Search products with keyword matching, filters, sorting, and pagination.",
     )
     def get(self, request):
+        cache_key = request_cache_key("products:search", request)
+        cached_data = cache.get(cache_key)
+        if cached_data is not None:
+            return Response(cached_data)
+
         queryset = Product.objects.select_related("category")
         keyword = request.query_params.get("q") or request.query_params.get("keyword")
         category = request.query_params.get("category")
@@ -106,7 +114,9 @@ class ProductSearchAPIView(APIView):
                 queryset = queryset.filter(inventory_quantity=0)
 
         queryset = self._sort_queryset(queryset, sort)
-        return Response(self._paginated_response(request, queryset))
+        response_data = self._paginated_response(request, queryset)
+        cache.set(cache_key, response_data, settings.CACHE_TTL_SECONDS)
+        return Response(response_data)
 
     def _filter_category(self, queryset, category):
         if category.isdigit():
@@ -206,6 +216,11 @@ class ProductSuggestAPIView(APIView):
         if len(keyword) < 3:
             raise ValidationError({"q": "Minimum 3 characters required."})
 
+        cache_key = request_cache_key("products:suggest", request)
+        cached_data = cache.get(cache_key)
+        if cached_data is not None:
+            return Response(cached_data)
+
         suggestions = (
             Product.objects.filter(title__icontains=keyword)
             .annotate(
@@ -219,4 +234,6 @@ class ProductSuggestAPIView(APIView):
             .values_list("title", flat=True)[:10]
         )
 
-        return Response({"results": list(suggestions)})
+        response_data = {"results": list(suggestions)}
+        cache.set(cache_key, response_data, settings.CACHE_TTL_SECONDS)
+        return Response(response_data)
