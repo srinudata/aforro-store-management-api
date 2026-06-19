@@ -7,6 +7,6 @@ python-decouple==3.8
 Faker==37.4.0
 django-redis==5.4.0
 celery==5.5.3
-redis==5.5.3
+redis==5.3.1
 pytest==8.4.1
 pytest-django==4.11.1
